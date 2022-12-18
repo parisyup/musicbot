@@ -14,7 +14,7 @@ import yt_dlp
 
 ctxmain = ["nothing"]
 
-TOKEN = 
+TOKEN = "MTA1NDA0MzI5MjY3MDYyMzg4NA.GLBbDz.X0VbhzjAQSOGSq8IPD6m3VolAXevZYgJ18IOb4"
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -49,6 +49,7 @@ async def main():
     await client.start(TOKEN)
 
 asyncio.run(main())
+
 
 
 

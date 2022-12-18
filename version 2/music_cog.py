@@ -7,25 +7,18 @@ from discord.ext import commands
 from youtube_dl import YoutubeDL
 
 
-queues = {}
-queues2 = []
-queuesNames = []
-queuesNames2 = []
-nameOfSongsInQ = []
-currentSong = []
-
 msg1 = []
 msg2 = []
 
 
 class music_cog(commands.Cog):
     def __init__(self, bot):
+        self.ctx = None
         self.bot = bot
-
+        self.cSong = None
         # all the music related stuff
         self.is_playing = False
         self.is_paused = False
-        self.countdown = False
 
         # 2d array containing [song, channel]
         self.music_queue = []
@@ -35,6 +28,8 @@ class music_cog(commands.Cog):
 
         self.vc = None
         self.currentSong = None
+
+        self.doOnce = False
 
     # searching the item on youtube
     def search_yt(self, item):
@@ -46,10 +41,9 @@ class music_cog(commands.Cog):
 
         return {'source': info['formats'][0]['url'], 'title': info['title']}
 
-    def play_next(self, ctx):
-        print("song done ")
+    def play_next(self):
+        print("NEXT")
         if len(self.music_queue) > 0:
-            print("next")
             self.is_playing = True
 
             # get the first url
@@ -59,12 +53,11 @@ class music_cog(commands.Cog):
             self.currentSong = self.music_queue[0]
             self.music_queue.pop(0)
 
-            self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next(ctx))
+            self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
         else:
             if not self.vc.is_playing():
                 self.currentSong = None
             self.is_playing = False
-
 
     # infinite loop checking
     async def play_music(self, ctx):
@@ -88,13 +81,17 @@ class music_cog(commands.Cog):
             self.currentSong = self.music_queue[0]
             self.music_queue.pop(0)
 
-            self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda x=None: self.play_next(ctx))
+            self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
         else:
             self.is_playing = False
 
     @commands.command(name="play", aliases=["p", "playing"], help="Plays a selected song from youtube")
     async def play(self, ctx, *args):
+
+        self.ctx = ctx
         query = " ".join(args)
+
+
 
         voice_channel = ctx.author.voice.channel
         if voice_channel is None:
@@ -117,6 +114,9 @@ class music_cog(commands.Cog):
                     await self.play_music(ctx)
                 await ctx.invoke(self.bot.get_command('controlPanel'))
                 await ctx.invoke(self.bot.get_command('checkForLeave'))
+                    # await self.checkForNextSong(ctx= ctx)
+                    # await self.checkForLeave(ctx= ctx)
+
 
 
     @commands.command(name="pause", help="Pauses the current song being played")
@@ -142,19 +142,17 @@ class music_cog(commands.Cog):
 
     @commands.command(pass_context=True, name="checkForLeave", help="checkForLeave")
     async def checkForLeave(self, ctx):
-        temp = self.currentSong
-        if self.countdown:
-            return
-        self.countdown = True
         voice = ctx.channel.guild.voice_client
         time = 0
         while True:
-            if not(temp == self.currentSong):
-                temp = self.currentSong
+            if not (self.currentSong == self.cSong):
+                print("diff song")
+                self.cSong = self.currentSong
+                await ctx.invoke(self.bot.get_command('checkForLeave'))
                 await ctx.invoke(self.bot.get_command('controlPanel'))
-                
-            await asyncio.sleep(1)
-            time = time + 1
+            print(time)
+            await asyncio.sleep(5)
+            time = time + 5
             if voice.is_playing() and not voice.is_paused():
                 time = 0
             if time == 300:
@@ -164,16 +162,16 @@ class music_cog(commands.Cog):
                 await ctx.invoke(self.bot.get_command('restart'))
             if not voice.is_connected():
                 break
+        self.doOnce = False
 
     @commands.command(name="skip", aliases=["s"], help="Skips the current song being played")
     async def skip(self, ctx):
         temp = None
-        if len(self.music_queue) >= 1:
-            temp = self.music_queue[0]
+        if len(self.music_queue) == 1:
+            temp = self.music_queue[0][0]['title']
         if self.vc != None and self.vc:
             self.vc.stop()
             # try to play next in the queue if it exists
-            await self.play_music(ctx)
             if self.vc.is_playing():
                 self.is_paused = False
                 self.is_playing = True
@@ -187,10 +185,11 @@ class music_cog(commands.Cog):
         retval = ""
         counter = 1
         for i in range(0, len(self.music_queue)):
+            counter += counter + 1
             # display a max of 5 songs in the current queue
             if (i > 4): break
-            retval += str(counter) + ": " + self.music_queue[i][0]['title'] + "\n"
-            counter += counter + 1
+            retval += str(i + 1) + ": " + self.music_queue[i][0]['title'] + "\n"
+
 
         if retval != "":
             embed = discord.Embed(color=discord.Color.random())
@@ -220,7 +219,7 @@ class music_cog(commands.Cog):
     @commands.command(pass_context=True, name="controlPanel", aliases=["cp", "control", "controls", "player"],
                       help="please input the utube link")
     async def controlPanel(self, ctx):
-        
+        print(self.currentSong)
         if not (msg1 == []):
             await msg1[0].delete()
             msg1.pop(0)
@@ -241,7 +240,6 @@ class music_cog(commands.Cog):
                 value = "-------------------"
             else:
                 value = "next song is: " + str(self.music_queue[0][0]['title'])
-            
             embed.add_field(name="Now Playing: " + str(self.currentSong[0]['title']), value=value)
         else:
             embed.add_field(name="End of Queue",
@@ -262,6 +260,11 @@ class music_cog(commands.Cog):
         await ctx.send("restarting the bot")
         os.execv(sys.executable, ['python'] + sys.argv)
 
+
+
+
+
+
 class Menu(discord.ui.View):
     def __init__(self, bot, secondSelf):
         super().__init__()
@@ -277,27 +280,22 @@ class Menu(discord.ui.View):
     @discord.ui.button(label="▶", style=discord.ButtonStyle.green)
     async def menu1(self, button: discord.ui.Button, interaction: discord.Interaction):
         await self.ctx.invoke(self.bot.get_command('resume'))
-        
 
 
     @discord.ui.button(label="⏸", style=discord.ButtonStyle.red)
     async def menu2(self, button: discord.ui.Button, interaction: discord.Interaction):
         await self.ctx.invoke(self.bot.get_command('pause'))
-        
 
 
     @discord.ui.button(label="⏭", style=discord.ButtonStyle.blurple)
     async def menu3(self, button: discord.ui.Button, interaction: discord.Interaction):
         await self.ctx.invoke(self.bot.get_command('skip'))
-        await ctx.invoke(self.bot.get_command('controlPanel'))
 
 
 
     @discord.ui.button(label="Queue", style=discord.ButtonStyle.grey)
     async def menu4(self, button: discord.ui.Button, interaction: discord.Interaction):
         await self.ctx.invoke(self.bot.get_command('queue'))
-        
-
 
 
 
@@ -308,9 +306,23 @@ class Menu(discord.ui.View):
 
 
 def SetMsg1(x):
+    if len(msg1) > 1:
+        msg1.clear()
+        msg1.append(x)
+        return
+    if len(msg1) == 1:
+        msg1[0] = x
+        return
     msg1.append(x)
 
 def SetMsg2(x):
+    if len(msg2) > 1:
+        msg2.clear()
+        msg2.append(x)
+        return
+    if len(msg2) == 1:
+        msg2[0] = x
+        return
     msg2.append(x)
 
 
