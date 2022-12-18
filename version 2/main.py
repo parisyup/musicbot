@@ -14,7 +14,7 @@ import yt_dlp
 
 ctxmain = ["nothing"]
 
-TOKEN = "MTA1NDA0MzI5MjY3MDYyMzg4NA.GLBbDz.X0VbhzjAQSOGSq8IPD6m3VolAXevZYgJ18IOb4"
+TOKEN = ""
 intents = discord.Intents.default()
 intents.message_content = True
 
