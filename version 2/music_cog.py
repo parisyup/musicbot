@@ -39,7 +39,7 @@ class music_cog(commands.Cog):
             except Exception:
                 return False
 
-        return {'source': info['formats'][0]['url'], 'title': info['title']}
+        return {'source': info['url'], 'title': info['title']}
 
     def play_next(self):
         print("NEXT")
