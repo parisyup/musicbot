@@ -4,7 +4,7 @@ import asyncio
 import sys
 import os
 from discord.ext import commands
-from youtube_dl import YoutubeDL
+from yt_dlp import YoutubeDL
 
 
 msg1 = []
@@ -172,10 +172,10 @@ class music_cog(commands.Cog):
         if self.vc != None and self.vc:
             self.vc.stop()
             # try to play next in the queue if it exists
-            if self.vc.is_playing():
-                self.is_paused = False
-                self.is_playing = True
-                self.currentSong = temp
+            #if self.vc.is_playing():
+             #   self.is_paused = False
+              #  self.is_playing = True
+               # self.currentSong = temp
 
             await ctx.invoke(self.bot.get_command('controlPanel'))
 
