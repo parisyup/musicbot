@@ -7,6 +7,9 @@ Creating a discord bot token:
 4- Go to OAuth2 and invite him to your server
 
 Running the code:
-1- Make sure that all the dependencies are downloaded which are:
+1- Make sure that all the dependencies are downloaded which are: 
+(discord
+, yt_dlp
+, youtube_dl)
 2- Paste the token into the main.py
 3- run the code from your cmd by running "python main.py"
